@@ -1,24 +1,17 @@
 import asyncio
-from graphiti_core import Graphiti
-from graphiti_core.driver.falkordb_driver import FalkorDriver
-from graphiti_core.search.search_config_recipes import NODE_HYBRID_SEARCH_RRF
 from dotenv import load_dotenv
 import os
+from graphiti_core import Graphiti
+from graphiti_core.driver.falkordb_driver import FalkorDriver
 
-# Load environment variables
 load_dotenv()
 
-falkor_username = os.environ.get('FALKORDB_USERNAME', None)
-falkor_password = os.environ.get('FALKORDB_PASSWORD', None)
-falkor_host = os.environ.get('FALKORDB_HOST', 'localhost')
-falkor_port = os.environ.get('FALKORDB_PORT', '6379')
-OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
-
-if not OPENAI_KEY:
-    raise RuntimeError("Please set OPENAI_API_KEY in your environment")
+falkor_host = os.getenv("FALKORDB_HOST", "localhost")
+falkor_port = int(os.getenv("FALKORDB_PORT", "6379"))
+falkor_username = os.getenv("FALKORDB_USERNAME", None)
+falkor_password = os.getenv("FALKORDB_PASSWORD", None)
 
 async def main():
-    # 1) Connect to FalkorDB via Graphiti
     driver = FalkorDriver(
         host=falkor_host,
         port=falkor_port,
@@ -28,25 +21,24 @@ async def main():
     graphiti = Graphiti(graph_driver=driver)
 
     try:
-        query = "Who is the Data Scientist?"
-        print(f">>> Running query: {query}")
+        question = "hwo is Alice related to Bob?"
 
-        # High-level hybrid search
-        results = await graphiti.search(query)
-        print("\nRaw search results:")
-        print(results)
-
-        # Node-specific search with config
-        print("\nNode-specific search results:")
-        node_cfg = NODE_HYBRID_SEARCH_RRF.model_copy(deep=True)
-        node_cfg.limit = 5
-        node_results = await graphiti._search(query=query, config=node_cfg)
-        print(node_results)
+        print(f"=== Query: {question} ===\n")
+        results = await graphiti.search(question)
+        # Print search results
+        print('\nSearch Results:')
+        for result in results:
+            print(f'UUID: {result.uuid}')
+            print(f'Fact: {result.fact}')
+            if hasattr(result, 'valid_at') and result.valid_at:
+                print(f'Valid from: {result.valid_at}')
+            if hasattr(result, 'invalid_at') and result.invalid_at:
+                print(f'Valid until: {result.invalid_at}')
+            print('---')
 
     finally:
         await graphiti.close()
         await driver.close()
-        print("\nConnection closed.")
 
 if __name__ == "__main__":
     asyncio.run(main())
